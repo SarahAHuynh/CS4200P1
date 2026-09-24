@@ -24,7 +24,7 @@ Files
 * `Length16.txt` - sample puzzles with a solution length of 16
 * `Length20.txt` - sample puzzles with a solution length of 20
 * `analysis_results.csv` - table with generated averages from the 100 case analysis
-* `output.txt` - generated output from program with solution paths
+* `program_output(#).txt` - numbered transcript of interactive program run
 
 # How to run the program?
 
@@ -50,8 +50,9 @@ For option 2 (manual input), reference the following example for format:
 
 After selecting a puzzle, choose `1` for h1 or `2` for h2. The program prints every state in the solution, the solution depth, the number of generated nodes, and the runtime.
 
-
-
 ### 100 case analysis
 
 The anaylsis uses 50 supplied sample puzzles and adds 50 randomly generated solvable puzzles. It groups results by actual solution depth and calculates the average search cost and average runtime for h1 and h2. The results are printed to the console and saved to `analysis_results.csv`
+
+
+Each time the program starts, it creates the next unused transcript file, such as `program_output(1).txt` or `program_output(2).txt`. The transcript records the menu conversation, the user's entries, selected puzzle, heuristic, every solution step, search statistics, analysis messages, and the exit message. The program returns to the main menu after each puzzle, file load, or analysis run and keeps running until the user selects option `5`.

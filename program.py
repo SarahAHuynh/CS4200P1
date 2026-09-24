@@ -8,6 +8,7 @@ import random
 from pathlib import Path
 from statistics import mean
 import csv
+from contextlib import redirect_stdout
 
 SIZE = 3
 TILE_COUNT = SIZE * SIZE
@@ -283,8 +284,47 @@ def print_solution(result: SearchResult | None) -> None:
         print(format_state(state))
 
     print(f"Solution depth: {result.solution_depth}")
-    print(f"Search cost: {result.nodes_generated}")
-    print(f"Time: {result.runtime_ms:.3f}ms")
+    print(f"Search Cost: {result.nodes_generated}")
+    print(f"Time: {result.runtime_ms:.6f} ms")
+
+class TranscriptStream:
+    #send normal program output to both screen and a transcript output file
+
+    def __init__(self, screen_stream, transcript_file):
+        self.screen_stream = screen_stream
+        self.transcript_file = transcript_file
+
+    def write(self, text: str) -> int:
+        self.screen_stream.write(text)
+        self.transcript_file.write(text)
+        self.transcript_file.flush()
+        return len(text)
+
+    def flush(self) -> None:
+        self.screen_stream.flush()
+        self.transcript_file.flush()
+
+    def isatty(self) -> bool:
+        return self.screen_stream.isatty()
+
+def get_next_transcript_path() -> Path:
+    #choose the next unused program_output(number).txt filename
+
+    file_number = 1
+    while True:
+        possible_path = Path(f"program_output({file_number}).txt")
+        if not possible_path.exists():
+            return possible_path
+        file_number += 1
+
+def ask_user(prompt: str) -> str:
+    # display an input prompt and save the user's response in the transcript
+
+    # print the prompt separately so the transcript receives it before input
+    print(prompt, end="", flush=True)
+    answer = input()
+    sys.stdout.write(f"{answer}\n")
+    return answer.strip()
 
 def create_random_puzzle() -> tuple[int, ...]:
     #create random, solvable puzzle board
@@ -312,13 +352,13 @@ def create_random_puzzle() -> tuple[int, ...]:
 
 def read_user_input_puzzle() -> tuple[int, ...]:
     #read one puzzle from three input rows and validate it
-    print("Enter your puzzle using three rows of three number")
+    print("Enter your puzzle:")
     print("Use 0 for the blank tile")
 
     entered_numbers = []
     while len(entered_numbers) < TILE_COUNT:
         row_number = len(entered_numbers) // SIZE + 1
-        row_text = input(f"Row {row_number}: ").strip()
+        row_text = ask_user(f"Row {row_number}: ")
 
         try:
             numbers_in_row = [int(value) for value in row_text.split()]
@@ -378,7 +418,7 @@ def read_puzzles_from_file(file_name: str) -> list[tuple[int, ...]]:
 
 def choose_puzzle_from_file() -> tuple[int, ...]:
     #Load a file and let user select one puzzle from it
-    file_name = input("Enter the sample file path: ").strip()
+    file_name = ask_user("Enter the sample file path: ")
 
     try:
         puzzles_in_file = read_puzzles_from_file(file_name)
@@ -389,9 +429,9 @@ def choose_puzzle_from_file() -> tuple[int, ...]:
     print(f"Loaded {len(puzzles_in_file)} puzzles.")
 
     while True:
-        puzzle_number_text = input(
+        puzzle_number_text = ask_user(
             f"Which puzzle do you want to solve? (1-{len(puzzles_in_file)}): "
-        ).strip()
+        )
 
         try:
             puzzle_number = int(puzzle_number_text)
@@ -455,73 +495,6 @@ def save_analysis_csv(results_by_depth: dict[int, dict[str, list[float]]]) -> No
                 ]
             )
     print("Saved to analysis_results.csv")
-    
-def write_output_file(
-    output_file, section_title: str, input_mode: str, starting_state: tuple[int, ...], heuristic_name: str, solution_result: SearchResult, ) -> None:
-    #Write one complete solution in a format
-    output_file.write(f"{section_title}\n")
-    output_file.write("[1] Random\n")
-    output_file.write("[2] Manual Input\n")
-    output_file.write(f"{input_mode}\n")
-
-    if input_mode == "2":
-        output_file.write("Please enter your puzzle:\n")
-    else:
-        output_file.write("Puzzle:\n")
-
-    output_file.write(f"{format_state(starting_state)}\n")
-    output_file.write("Select H Function:\n")
-    output_file.write("[1] H1 (Misplaced Tiles)\n")
-    output_file.write("[2] H2 (Manhattan Distance)\n")
-    output_file.write(f"{heuristic_name}\n")
-
-    for step_number, state in enumerate(solution_result.path[1:], start=1):
-        output_file.write(f"Step: {step_number}\n")
-        output_file.write(f"{format_state(state)}\n\n")
-
-    output_file.write(f"Search Cost: {solution_result.nodes_generated}\n")
-    output_file.write(f"Time: {solution_result.runtime_ms:.3f} ms\n\n")
-
-def save_output_file() -> None:
-    #create output.txt with the three required sample solutions
-   
-    sample_cases = (
-        (
-            "Depth < 6",
-            "2",
-            (3, 1, 2, 6, 4, 5, 7, 8, 0),
-            "2",
-            a_star_h2,
-        ),
-        (
-            "Depth 9-15",
-            "1",
-            (0, 1, 7, 3, 5, 2, 4, 6, 8),
-            "1",
-            a_star_h1,
-        ),
-        (
-            "Depth > 18",
-            "1",
-            (7, 1, 8, 5, 6, 3, 2, 4, 0),
-            "1",
-            a_star_h1,
-        ),
-    )
-
-    with Path("output.txt").open("w", encoding="utf-8") as output_file:
-        for section_title, input_mode, starting_state, heuristic_name, search_function in sample_cases:
-            solution_result = search_function(starting_state)
-            write_output_file(
-                output_file,
-                section_title,
-                input_mode,
-                starting_state,
-                heuristic_name,
-                solution_result,
-            )
-
-    print("Saved to output.txt")
 
 
 def run_100_case_analysis() -> None:
@@ -595,7 +568,6 @@ def run_100_case_analysis() -> None:
 
     print_batch_analysis(results_by_depth)
     save_analysis_csv(results_by_depth)
-    save_output_file()
 
 def choose_heuristic() -> str:
     #ask user which heuristic A* should use
@@ -603,7 +575,7 @@ def choose_heuristic() -> str:
         print("\nSelect the heuristic function:")
         print("(1) h1 - Misplaced tiles")
         print("(2) h2 - Manhattan distance")
-        selected_option = input("Enter your choice: ").strip()
+        selected_option = ask_user("Enter your choice: ")
 
         if selected_option == "1":
             return "h1"
@@ -613,67 +585,90 @@ def choose_heuristic() -> str:
         print("Please enter 1 or 2")
 
 def run_program() -> None:
-    #run required random input and user input program
-    print("8-Puzzle A* Solver")
-    print("Goal State:")
-    print(format_state(GOAL_STATE))
+    # Create one numbered transcript for this entire run
+    transcript_path = get_next_transcript_path()
 
-    while True:
-        while True:
-            print("\nChoose how to enter the puzzle:")
-            print("(1) Generate a random puzzle")
-            print("(2) Enter puzzle manually")
-            print("(3) Load a puzzle from a .txt file")
-            print("(4) Run the 100 test case analysis")
-            print("(5) Exit")
-            selected_option = input("Enter your choice: ").strip()
+    with transcript_path.open("w", encoding="utf-8") as transcript_file:
+        screen_and_transcript = TranscriptStream(
+            sys.stdout,
+            transcript_file
+        )
 
-            if selected_option == "1":
-                starting_state = create_random_puzzle()
-                print("\nRandom puzzle:")
-                print(format_state(starting_state))
-                break
-            
-            if selected_option == "2":
-                try: 
-                    starting_state = read_user_input_puzzle()
-                except ValueError as error:
-                    print(f"Invalid puzzle: {error}")
+        # keep displaying the program on screen while also saving it
+        with redirect_stdout(screen_and_transcript):
+            print(f"Program transcript: {transcript_path.name}")
+            print("8-Puzzle A* Solver")
+            print("Goal State:")
+            print(format_state(GOAL_STATE))
+
+            while True:
+                while True:
+                    print("\nChoose how to enter the puzzle:")
+                    print("[1] Random")
+                    print("[2] Manual Input")
+                    print("[3] Load Puzzle from .txt File")
+                    print("[4] Run 100-Case Analysis")
+                    print("[5] Exit")
+
+                    selected_option = ask_user("Enter your choice: ")
+
+                    if selected_option == "1":
+                        starting_state = create_random_puzzle()
+                        print("\nPuzzle:")
+                        print(format_state(starting_state))
+                        break
+
+                    if selected_option == "2":
+                        try:
+                            starting_state = read_user_input_puzzle()
+                        except ValueError as error:
+                            print(f"Invalid puzzle: {error}")
+                            continue
+                        break
+
+                    if selected_option == "3":
+                        try:
+                            starting_state = choose_puzzle_from_file()
+                        except ValueError:
+                            continue
+                        break
+
+                    if selected_option == "4":
+                        run_100_case_analysis()
+                        continue
+
+                    if selected_option == "5":
+                        print("Exiting...")
+                        print(f"Transcript saved to {transcript_path.name}")
+                        return
+
+                    print("Please enter 1, 2, 3, 4, or 5.")
+
+                if not is_solvable(starting_state):
+                    print(
+                        "\nThis puzzle is not solvable because "
+                        "it has odd inversion parity"
+                    )
+                    print("Returning to main menu")
                     continue
-                break
-            
-            if selected_option == "3":
-                try:
-                    starting_state = choose_puzzle_from_file()
-                except ValueError:
-                    continue
-                break
 
-            if selected_option == "4":
-                run_100_case_analysis()
-                continue
+                selected_heuristic = choose_heuristic()
 
-            if selected_option == "5":
-                print("Exiting...")
-                return
+                if selected_heuristic == "h1":
+                    solution_result = a_star_h1(starting_state)
+                else:
+                    solution_result = a_star_h2(starting_state)
 
-            print("Please enter 1, 2, 3, 4, or 5.")
+                if solution_result is not None:
+                    if solution_result.solution_depth < 6:
+                        print("\nDepth < 6")
+                    elif solution_result.solution_depth <= 15:
+                        print("\nDepth 9-15")
+                    else:
+                        print("\nDepth > 18")
 
-        if not is_solvable(starting_state):
-            print("\nThis puzzle is not solvable because it has odd inversion parity")
-            print("Returning to main menu")
-            continue 
-
-        selected_heuristic = choose_heuristic()
-
-        if selected_heuristic == "h1":
-            solution_result = a_star_h1(starting_state)
-        else:
-            solution_result = a_star_h2(starting_state)
-        
-        print(f"\nA* solution using {selected_heuristic}:")
-        print_solution(solution_result)
-
+                print(f"\nA* solution using {selected_heuristic}:")
+                print_solution(solution_result)
 
 if __name__ == "__main__":
     run_program()
