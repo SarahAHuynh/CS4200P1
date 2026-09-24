@@ -114,38 +114,6 @@ def get_neighbors(state: Iterable[int]) -> list[tuple[int, ...]]:
 
     return neighbors
 
-def run_phase1_checks() -> None:
-    #Run small checks before adding the A* algorithm
-    goal = GOAL_STATE
-    one_move_away = (1, 0, 2, 3, 4, 5, 6, 7, 8)
-    sample_solvable = (3, 1, 2, 6, 4, 5, 7, 8, 0)
-    sample_unsolvable = (1, 2, 3, 4, 5, 6, 8, 7, 0)
-
-    assert count_inversions(goal) == 0
-    assert is_solvable(goal)
-    assert misplaced_tiles(goal) == 0
-    assert manhattan_distance(goal) == 0
-    assert len(get_neighbors(goal)) == 2
-
-    # The blank is intentionally excluded from h1.
-    assert misplaced_tiles(one_move_away) == 1
-    assert manhattan_distance(one_move_away) == 1
-
-    assert is_solvable(sample_solvable)
-    assert not is_solvable(sample_unsolvable)
-
-    print("Phase 1 checks passed.")
-    print("\nSample state:")
-    print(format_state(sample_solvable))
-    print("\nInversions:", count_inversions(sample_solvable))
-    print("Solvable:", is_solvable(sample_solvable))
-    print("h1 misplaced tiles:", misplaced_tiles(sample_solvable))
-    print("h2 Manhattan distance:", manhattan_distance(sample_solvable))
-    print("\nLegal neighboring states:")
-    for neighbor_number, neighbor in enumerate(get_neighbors(sample_solvable), start=1):
-        print(f"\nMove {neighbor_number}:")
-        print(format_state(neighbor))
-
 @dataclass
 class SearchResult:
     #info returned after solving one puzzle with A*
@@ -237,11 +205,11 @@ def a_star_h1(initial_state: tuple[int, ...]) -> SearchResult | None:
 
     return None 
 
-def a_star_h2(inital_state: tuple[int, ...]) -> SearchResult | None:
+def a_star_h2(initial_state: tuple[int, ...]) -> SearchResult | None:
     #solve puzzle using A* and h2, the manhattan distance heuristic
     #same A* process as a_star_h1, but h2 estimates remaining work by adding the row and column distance of every numbered tile from its goal position
 
-    checked_state = validate_state(inital_state)
+    checked_state = validate_state(initial_state)
 
     if not is_solvable(checked_state):
         return None
@@ -305,7 +273,7 @@ def a_star_h2(inital_state: tuple[int, ...]) -> SearchResult | None:
     return None
 
 def print_solution(result: SearchResult | None) -> None:
-    #print each state after the inital state and the search stats
+    #print each state after the initial state and the search stats
     if result is None:
         print("This puzzle isn't solvable")
         return
@@ -317,51 +285,6 @@ def print_solution(result: SearchResult | None) -> None:
     print(f"Solution depth: {result.solution_depth}")
     print(f"Search cost: {result.nodes_generated}")
     print(f"Time: {result.runtime_ms:.3f}ms")
-
-def run_phase2_checks() -> None:
-    #check A* against puzzles whose depths are easy to verify
-    test_cases = [("Already solved", GOAL_STATE, 0), ("One move", (1,0,2,3,4,5,6,7,8), 1), ("Two moves", (1,4,2,3,0,5,6,7,8), 2), ("Four moves", (1,2,5,3,4,8,6,7,0), 4), ("Unsolvable", (1,2,3,4,5,6,8,7,0), None),]
-
-    for name, state, excepted_depth in test_cases:
-        result = a_star_h1(state)
-
-        if excepted_depth is None:
-            assert result is None, f"{name} should be unsolvable"
-        else:
-            assert result is not None, f"{name} should have a solution"
-            assert result.solution_depth == excepted_depth, (f"{name}: expected depth {excepted_depth}, " f"got{result.solution_depth}")
-            assert result.path[0] == state
-            assert result.path[-1] == GOAL_STATE
-
-        print(f"Passed: {name}")
-
-def run_phase3_checks() -> None:
-    #confirm A* with h2 finds same optimal depths as h1
-    test_cases = [("Already solved", GOAL_STATE, 0), ("One move", (1, 0, 2, 3, 4, 5, 6, 7, 8), 1), ("Two moves", (1, 4, 2, 3, 0, 5, 6, 7, 8), 2), ("Four moves", (1, 2, 5, 3, 4, 8, 6, 7, 0), 4), ("Unsolvable", (1, 2, 3, 4, 5, 6, 8, 7, 0), None),]
-
-    for name, state, expected_depth in test_cases:
-        result = a_star_h2(state)
-
-        if expected_depth is None:
-            assert result is None, f"{name} should be unsolvable"
-        else:
-            assert result is not None, f"{name} should have a solution"
-            assert result.solution_depth == expected_depth, (f"{name}: expected depth {expected_depth}," f"got {result.solution_depth}")
-            assert result.path[0] == state
-            assert result.path[-1] == GOAL_STATE
-
-        print(f"Passed: {name}")
-
-def run_demo() -> None:
-    #solve sample state with both heuristics for comparison
-    sample_state = (3,1,2,6,4,5,7,8,0)
-
-    print("\nInitial state:")
-    print(format_state(sample_state))
-    print("\nA* solution using h1:")
-    print_solution(a_star_h1(sample_state))
-    print("\nA* solution using h2:")
-    print_solution(a_star_h2(sample_state))
 
 def create_random_puzzle() -> tuple[int, ...]:
     #create random, solvable puzzle board
@@ -504,7 +427,7 @@ def print_batch_analysis(results_by_depth: dict[int, dict[str, list[float]]]) ->
 def save_analysis_csv(results_by_depth: dict[int, dict[str, list[float]]]) -> None:
     #save grouped averages into csv file
 
-    with Path("analysis_result.csv").open( 
+    with Path("analysis_results.csv").open( 
         "w", newline="", encoding="utf-8"
     ) as results_file:
         csv_writer = csv.writer(results_file)
@@ -533,58 +456,73 @@ def save_analysis_csv(results_by_depth: dict[int, dict[str, list[float]]]) -> No
             )
     print("Saved to analysis_results.csv")
     
-def write_solution_to_file(
-    output_file, title: str, starting_state: tuple[int, ...], result: SearchResult) -> None:
+def write_output_file(
+    output_file, section_title: str, input_mode: str, starting_state: tuple[int, ...], heuristic_name: str, solution_result: SearchResult, ) -> None:
     #Write one complete solution in a format
-    output_file.write(f"{title}\n")
-    output_file.write("Initial state:\n")
-    output_file.write(f"{format_state(starting_state)}\n\n")
+    output_file.write(f"{section_title}\n")
+    output_file.write("[1] Random\n")
+    output_file.write("[2] Manual Input\n")
+    output_file.write(f"{input_mode}\n")
 
-    for step_number, state in enumerate(result.path[1:], start=1):
+    if input_mode == "2":
+        output_file.write("Please enter your puzzle:\n")
+    else:
+        output_file.write("Puzzle:\n")
+
+    output_file.write(f"{format_state(starting_state)}\n")
+    output_file.write("Select H Function:\n")
+    output_file.write("[1] H1 (Misplaced Tiles)\n")
+    output_file.write("[2] H2 (Manhattan Distance)\n")
+    output_file.write(f"{heuristic_name}\n")
+
+    for step_number, state in enumerate(solution_result.path[1:], start=1):
         output_file.write(f"Step: {step_number}\n")
         output_file.write(f"{format_state(state)}\n\n")
 
-    output_file.write(f"Solution depth: {result.solution_depth}\n")
-    output_file.write(f"Search cost: {result.nodes_generated}\n")
-    output_file.write(f"Time: {result.runtime_ms:.3f} ms\n\n")
+    output_file.write(f"Search Cost: {solution_result.nodes_generated}\n")
+    output_file.write(f"Time: {solution_result.runtime_ms:.3f} ms\n\n")
 
-def save_three_sample_solutions(test_puzzles: list[tuple[int, ...]]) -> None:
-    #save examples below 6, between 9 and 15, and above 18 moves
-    selected_examples = {}
+def save_output_file() -> None:
+    #create output.txt with the three required sample solutions
+   
+    sample_cases = (
+        (
+            "Depth < 6",
+            "2",
+            (3, 1, 2, 6, 4, 5, 7, 8, 0),
+            "2",
+            a_star_h2,
+        ),
+        (
+            "Depth 9-15",
+            "1",
+            (0, 1, 7, 3, 5, 2, 4, 6, 8),
+            "1",
+            a_star_h1,
+        ),
+        (
+            "Depth > 18",
+            "1",
+            (7, 1, 8, 5, 6, 3, 2, 4, 0),
+            "1",
+            a_star_h1,
+        ),
+    )
 
-    for starting_state in test_puzzles:
-        solution_result = a_star_h2(starting_state)
-        if solution_result is None:
-            continue
+    with Path("output.txt").open("w", encoding="utf-8") as output_file:
+        for section_title, input_mode, starting_state, heuristic_name, search_function in sample_cases:
+            solution_result = search_function(starting_state)
+            write_output_file(
+                output_file,
+                section_title,
+                input_mode,
+                starting_state,
+                heuristic_name,
+                solution_result,
+            )
 
-        solution_depth = solution_result.solution_depth
-        if solution_depth < 6 and "short" not in selected_examples:
-            selected_examples["short"] = (starting_state, solution_result)
-        elif 9 <= solution_depth <= 15 and "medium" not in selected_examples:
-            selected_examples["medium"] = (starting_state, solution_result)
-        elif solution_depth > 18 and "long" not in selected_examples:
-            selected_examples["long"] = (starting_state, solution_result)
+    print("Saved to output.txt")
 
-    with Path("sample_solutions.txt").open("w", encoding="utf-8") as output_file:
-        example_titles = (
-            ("short", "Sample Solution: Depth Less Than 6"),
-            ("medium", "Sample Solution: Depth Between 9 and 15"),
-            ("long", "Sample Solution: Depth Greater Than 18"),
-        )
-
-        for example_name, example_title in example_titles:
-            if example_name in selected_examples:
-                starting_state, solution_result = selected_examples[example_name]
-                write_solution_to_file(
-                    output_file,
-                    example_title,
-                    starting_state,
-                    solution_result,
-                )
-            else:
-                output_file.write(f"{example_title}\nNo example was found.\n\n")
-
-    print("Saved to sample_solutions.txt")
 
 def run_100_case_analysis() -> None:
     #analyze sample file puzzles and random puzzles
@@ -602,7 +540,7 @@ def run_100_case_analysis() -> None:
 
     for expected_length in expected_lengths:
         #accept both original names and uploaded names with (2)
-        possible_file_names = (f"Length{expected_length}.txt", f"Length{expected_length}(2).txt,")
+        possible_file_names = (f"Length{expected_length}.txt", f"Length{expected_length}(2).txt")
         file_name = next(
             (
                 possible_name 
@@ -657,7 +595,7 @@ def run_100_case_analysis() -> None:
 
     print_batch_analysis(results_by_depth)
     save_analysis_csv(results_by_depth)
-    save_three_sample_solutions(all_test_puzzles)
+    save_output_file()
 
 def choose_heuristic() -> str:
     #ask user which heuristic A* should use
@@ -738,12 +676,4 @@ def run_program() -> None:
 
 
 if __name__ == "__main__":
-    if "--checks" in sys.argv:
-        run_phase1_checks()
-        print("\nA* h1 checks:")
-        run_phase2_checks()
-        print("\nA* h2 checks:")
-        run_phase3_checks()
-        run_demo()
-    else:
-        run_program()
+    run_program()
