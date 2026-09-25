@@ -660,6 +660,7 @@ def run_program() -> None:
                     solution_result = a_star_h2(starting_state)
 
                 if solution_result is not None:
+                    solution_depth = solution_result.solution_depth
                     if solution_result.solution_depth < 6:
                         print("\nDepth < 6")
                     elif 9 <= solution_depth <= 15:

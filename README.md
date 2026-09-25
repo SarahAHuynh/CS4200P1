@@ -36,8 +36,8 @@ The menu provides the following choices:
 
 1. Generate a random solvable puzzle
 2. Enter a puzzle manually as three rows of three numbers
-3. Load a puzzle from one of the sampe .txt files and select a puzzle
-4. Run the 100 case anaylsis and generate its result table
+3. Load a puzzle from one of the sample .txt files and select a puzzle
+4. Run the 100 case analysis and generate its result table
 5. Exit
 
 For option 2 (manual input), reference the following example for format:
@@ -53,6 +53,5 @@ After selecting a puzzle, choose `1` for h1 or `2` for h2. The program prints ev
 ### 100 case analysis
 
 The anaylsis uses 50 supplied sample puzzles and adds 50 randomly generated solvable puzzles. It groups results by actual solution depth and calculates the average search cost and average runtime for h1 and h2. The results are printed to the console and saved to `analysis_results.csv`
-
 
 Each time the program starts, it creates the next unused transcript file, such as `program_output(1).txt` or `program_output(2).txt`. The transcript records the menu conversation, the user's entries, selected puzzle, heuristic, every solution step, search statistics, analysis messages, and the exit message. The program returns to the main menu after each puzzle, file load, or analysis run and keeps running until the user selects option `5`.
