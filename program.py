@@ -662,10 +662,12 @@ def run_program() -> None:
                 if solution_result is not None:
                     if solution_result.solution_depth < 6:
                         print("\nDepth < 6")
-                    elif solution_result.solution_depth <= 15:
+                    elif 9 <= solution_depth <= 15:
                         print("\nDepth 9-15")
-                    else:
+                    elif solution_depth > 18:
                         print("\nDepth > 18")
+                    else:
+                        print(f"\nSolution depth: {solution_depth}")
 
                 print(f"\nA* solution using {selected_heuristic}:")
                 print_solution(solution_result)
